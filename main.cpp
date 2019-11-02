@@ -1,15 +1,15 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
 #include <iostream>
-// #include <scissor.h> 
+
 using namespace cv;
 using namespace std;
 
-Mat dst, mask;
-int startX = NULL;
-int startY = NULL;
+// Mat dst, mask;
+// int startX = NULL;
+// int startY = NULL;
 
-void CallBackFunc(int event, int x, int y, int flags, void* userdata)
+/*void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 {
 
       if ((event == EVENT_MOUSEMOVE) && (flags & EVENT_FLAG_LBUTTON)){
@@ -24,23 +24,20 @@ void CallBackFunc(int event, int x, int y, int flags, void* userdata)
         startX=x;
         startY=y;
       }
-}
+}*/
  
 int main(int argc, char** argv)
 {
-    Mat img = imread("test.jpg");
-    mask = Mat(img.rows, img.cols, CV_8UC3, Scalar(0, 0, 0));
-    dst = img;
-    if ( img.empty() ) 
-    { 
-        cout << "Error loading the image" << endl;
-        return -1; 
-    }
-    namedWindow("DST", 1);
-    namedWindow("Mask", 1);
-    imshow("DST", dst);
-    imshow("Mask", mask);
-    setMouseCallback("DST", CallBackFunc, NULL);
+    Point start_point;
+    Mat bin = Mat(90, 90, CV_8UC1, Scalar(0));
+    
+        circle(bin, Point(45, 45), 20, Scalar(255), -1);
+     
+    // print(bin);
+
+    namedWindow("Binar", 1);
+    imshow("Binar", bin);
+  
     waitKey(0);
     return 0;
 }
