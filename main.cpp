@@ -2,6 +2,9 @@
 #include <opencv2/imgproc.hpp>
 #include <iostream>
 #include <math.h>
+#include <list>
+#include <vector>
+#include <algorithm>
 
 using namespace cv;
 using namespace std;
@@ -26,6 +29,12 @@ using namespace std;
         startY=y;
       }
 }*/
+
+struct veght_pixel
+{
+  Point pixel;
+  double tmp;
+};
 
 Mat laplassian_zero_crossing(const Mat &src)
 {
@@ -68,14 +77,25 @@ float local_cost(const Point &p, const Point &q, const Mat &laplasian,
         dq = dy.at<float>(q) * (p.x - q.x) - dx.at<float>(q) * (p.y - q.y);
     }
     float grad = (1 / cos(dp) + 1/cos(dq)) / M_PI;
-    return wlaplasian * laplasian.at<float>(q) + wdirection * grad + wmagitude * magnitude.at<float>(q);
+    return wlaplasian * laplasian.at<float>(q) + wdirection * grad + wmagitude
+           * magnitude.at<float>(q);
+}
+
+// Point graph_search(Mat src, const Point &start)
+// {
+ 
+// }
+
+bool comp( veght_pixel a, veght_pixel b)
+{
+return a.tmp < b.tmp;
 }
 
 int main(int argc, char** argv)
 {
-    
     Point start_point(331, 48);
     Point end_point(396, 85);
+    
     Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
     // circle(bin, Point(331, 48), 20, Scalar(0), -1);
     // circle(bin, Point(396, 85), 20, Scalar(0), -1);
@@ -85,13 +105,33 @@ int main(int argc, char** argv)
     Mat dy;
     Mat magnitude;
     gradient_magnitude(bin, dx, dy, magnitude);
-    cout << local_cost(start_point, end_point, laplasian, magnitude, dx, dy)<<endl;
-    namedWindow("Lap",1);    
+    // cout << local_cost(start_point, end_point, laplasian, magnitude, dx, dy)
+    //      << endl;
+
+    // Point P;
+    vector <veght_pixel> L;
+    veght_pixel P;
+    vector <Point> path, use_pixel;
+    P.pixel = start_point;
+    P.tmp = 0;
+
+    L.push_back(P);
+
+    while (!L.empty())
+    {
+      sort(L.begin(), L.end(), comp);
+      P = L.back();
+      L.pop_back();
+      cout << P.tmp << " " << P.pixel;
+      // use_pixel.push_back(P);
+    }
+
+    namedWindow("Lap",1);
     namedWindow("Binar", 1);
-    // namedWindow("Mag",1);
+    namedWindow("Mag",1);
     imshow("Binar", magnitude);
-    // imshow("Lap", dst);
-    // imshow("Mag", mag);
+    //imshow("Lap", dst);
+    imshow("Mag", laplasian);
 
     waitKey(0);
     return 0;
