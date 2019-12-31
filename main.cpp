@@ -81,11 +81,6 @@ float local_cost(const Point &p, const Point &q, const Mat &laplasian,
            * magnitude.at<float>(q);
 }
 
-// Point graph_search(Mat src, const Point &start)
-// {
- 
-// }
-
 bool comp( veght_pixel a, veght_pixel b)
 {
 return a.tmp < b.tmp;
@@ -94,12 +89,11 @@ return a.tmp < b.tmp;
 int main(int argc, char** argv)
 {
     Point start_point(331, 48);
-    Point end_point(396, 85);
+    Point end_point(331, 47);
     
     Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
     // circle(bin, Point(331, 48), 20, Scalar(0), -1);
     // circle(bin, Point(396, 85), 20, Scalar(0), -1);
-
     Mat laplasian = laplassian_zero_crossing(bin);
     Mat dx;
     Mat dy;
@@ -107,10 +101,11 @@ int main(int argc, char** argv)
     gradient_magnitude(bin, dx, dy, magnitude);
     // cout << local_cost(start_point, end_point, laplasian, magnitude, dx, dy)
     //      << endl;
-
+    // start algoritm
     // Point P;
     vector <veght_pixel> L;
     veght_pixel P;
+    Mat cost_map(laplasian);
     vector <Point> path, use_pixel;
     P.pixel = start_point;
     P.tmp = 0;
@@ -120,12 +115,13 @@ int main(int argc, char** argv)
     while (!L.empty())
     {
       sort(L.begin(), L.end(), comp);
+      
       P = L.back();
       L.pop_back();
       cout << P.tmp << " " << P.pixel;
-      // use_pixel.push_back(P);
+      use_pixel.push_back(P.pixel);
     }
-
+              
     namedWindow("Lap",1);
     namedWindow("Binar", 1);
     namedWindow("Mag",1);
