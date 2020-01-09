@@ -30,10 +30,27 @@ using namespace std;
       }
 }*/
 
+ void np(const Point &seed, vector <Point> &arr , int max_x, int max_y)
+ {
+   for (int i = -1; i <= 1; i++)
+       {
+         for(int j = -1; j <= 1; j++)
+          {
+            if ((seed.x + i  => 0) || (seed.y + i => 0 )) && (seed.y - i  >  )
+               { 
+                   arr.push_back(Point(seed.x + i, seed . y + j));
+                   cout << seed.x - i<< endl;
+               }
+          }
+       }
+ }
+
+
 struct veght_pixel
 {
   Point pixel;
   double tmp;
+  bool processed;
 };
 
 Mat laplassian_zero_crossing(const Mat &src)
@@ -90,7 +107,10 @@ int main(int argc, char** argv)
 {
     Point start_point(331, 48);
     Point end_point(331, 47);
-    
+    vector <veght_pixel> L;
+    vector <Point> path;
+    veght_pixel P;
+
     Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
     // circle(bin, Point(331, 48), 20, Scalar(0), -1);
     // circle(bin, Point(396, 85), 20, Scalar(0), -1);
@@ -99,29 +119,39 @@ int main(int argc, char** argv)
     Mat dy;
     Mat magnitude;
     gradient_magnitude(bin, dx, dy, magnitude);
-    // cout << local_cost(start_point, end_point, laplasian, magnitude, dx, dy)
-    //      << endl;
-    // start algoritm
-    // Point P;
-    vector <veght_pixel> L;
-    veght_pixel P;
-    Mat cost_map(laplasian);
-    vector <Point> path, use_pixel;
+
     P.pixel = start_point;
     P.tmp = 0;
-
+    P.processed = false; 
     L.push_back(P);
 
-    while (!L.empty())
-    {
-      sort(L.begin(), L.end(), comp);
+    // while (!L.empty())
+    // {
+    //   sort(L.begin(), L.end(), comp);
+    //   P = L.back();
+    //   cout << P.tmp;
+    //   L.pop_back();
+    //   P.processed = true;
       
-      P = L.back();
-      L.pop_back();
-      cout << P.tmp << " " << P.pixel;
-      use_pixel.push_back(P.pixel);
+    // // for 
+    // //   e.push_back(P.pixel);
+    // //   cout << P.tmp << " " << P.pixel;
+    // //   use_pixel.push_back(P.pixel);
+    // //   for (int i=0; i < 9; i++)
+    // //      {
+    // //        if()
+    // //      }
+    // }
+    vector <Point> arr;
+    np(Point(0,0), arr, 10, 10); 
+    cout<<"Start"<<endl;
+    while (!arr.empty())
+    {
+      start_point = arr.back();
+      arr.pop_back();
+      cout << start_point.x << " "<<start_point.y << endl;
     }
-              
+      
     namedWindow("Lap",1);
     namedWindow("Binar", 1);
     namedWindow("Mag",1);
