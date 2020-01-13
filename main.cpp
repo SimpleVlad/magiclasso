@@ -36,7 +36,13 @@ using namespace std;
        {
          for(int j = -1; j <= 1; j++)
           {
-            if ((seed.x + i  => 0) || (seed.y + i => 0 )) && (seed.y - i  >  )
+          //   if ((seed.x + i  => 0) || (seed.y + i => 0 )) && (seed.y - i  >  )
+          //      { 
+          //          arr.push_back(Point(seed.x + i, seed . y + j));
+          //          cout << seed.x - i<< endl;
+          //      }
+              if ((seed.x + i >= 0) && (seed.y + j >= 0) && (seed.x + i < max_x) 
+                 && (seed.y + j < max_y)) 
                { 
                    arr.push_back(Point(seed.x + i, seed . y + j));
                    cout << seed.x - i<< endl;
@@ -100,7 +106,7 @@ float local_cost(const Point &p, const Point &q, const Mat &laplasian,
 
 bool comp( veght_pixel a, veght_pixel b)
 {
-return a.tmp < b.tmp;
+ return a.tmp < b.tmp;
 }
 
 int main(int argc, char** argv)
@@ -143,7 +149,7 @@ int main(int argc, char** argv)
     // //      }
     // }
     vector <Point> arr;
-    np(Point(0,0), arr, 10, 10); 
+    np(Point(1,1), arr, laplasian.rows, laplasian.cols); 
     cout<<"Start"<<endl;
     while (!arr.empty())
     {
