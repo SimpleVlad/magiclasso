@@ -32,25 +32,33 @@ struct veght_pixel
   double tmp;
 };
 
-class Node
+/*class Node
 {
   public:
     vector<veght_pixel> val; // in progress
     veght_pixel back;        // to
-}
+}*/
 
 void np(const Point &seed, vector <Point> &arr , int max_x, int max_y)
 {
+   cout<< "Output points:"<<endl;
    for (int i = -1; i <= 1; i++)
        {
          for(int j = -1; j <= 1; j++)
           {
+             if ((i==0)&&(j==0))
+             {
+               continue;
+             }
+             else
+             {
               if ((seed.x + i >= 0) && (seed.y + j >= 0) && (seed.x + i < max_x)
                  && (seed.y + j < max_y)) 
                { 
                    arr.push_back(Point(seed.x + i, seed . y + j));
-                   cout << seed.x - i<< endl;
+                   cout << seed.x + i<< " "<<seed.y + j  <<endl;
                }
+             }
           }
        }
 }
@@ -114,7 +122,7 @@ int main(int argc, char** argv)
     vector <veght_pixel> L;
     vector <Point> path;
     veght_pixel P;
-    vector<bool> processed;
+    vector<Point> processed;
 
     Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
     Mat laplasian = laplassian_zero_crossing(bin);
@@ -130,39 +138,35 @@ int main(int argc, char** argv)
 
     while (!L.empty())
     {
-       vector <Point> arr;
+       vector<Point> arr;
        sort(L.begin(), L.end(), comp);
        P = L.back();
-       cout << P.tmp;
+       cout << "F" << endl;
        L.pop_back();
        processed.push_back(P.pixel);
-       np( P.pixel, arr, laplasian.rows, laplasian.cols); 
-
+       np( P.pixel, arr, laplasian.rows, laplasian.cols);
+         cout<<arr<<endl;
        while  (!arr.empty())
          {
-           auto neighbor = std::find(processed.begin, processed.end, arr.back)
-           if (arr.back != processed.end)
-           {
-            double total_weight;  // rework
-
-           }
+           Point st;
+           st = arr.back();
+           arr.pop_back();
+           auto neighbor = find(processed.begin(), processed.end(), st);
+           cout << "Total_weight";
+          // if (neighbor != processed.end())
+         //   {
+              double total_weight = P.tmp + local_cost(P.pixel,st, laplasian, magnitude, dx, dy);  // rework
+              cout << total_weight<<endl;
+            // if()
+         //  }
            
          }
     }
-    
-//    cout<<"Start"<<endl;
-//  while (!arr.empty())
-//    {
-//      start_point = arr.back();
-//      arr.pop_back();
-//      cout << start_point.x << " "<<start_point.y << endl;
-//    }
 
     namedWindow("Lap",1);
     namedWindow("Binar", 1);
     namedWindow("Mag",1);
     imshow("Binar", magnitude);
-    //imshow("Lap", dst);
     imshow("Mag", laplasian);
     waitKey(0);
     return 0;
