@@ -123,7 +123,7 @@ int main(int argc, char** argv)
   Point end_point(31, 47);
   Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
   Mat cost_map(bin.rows, bin.cols, CV_32FC1, cv::Scalar(2147483647));
-  Mat expanded_map(bin.rows, bin.cols, CV_32FC1, cv::Scalar(2147483647));
+  Mat expanded_map(bin.rows, bin.cols, CV_8UC1, cv::Scalar(0));
 
   vector <veght_pixel> L;
   vector <Point> path;
@@ -135,20 +135,26 @@ int main(int argc, char** argv)
   Mat dy;
   Mat magnitude;
   gradient_magnitude(bin, dx, dy, magnitude);
+  
   // --start algorithm--
-
   P.pixel = start_point;
   P.cost = 0;
   processed.push_back(P.pixel); 
   L.push_back(P);
   cost_map.at<float>(start_point) = P.cost; 
- 
+  while (!L.empty())
+  {
+    sort(L.begin(), L.end(), comp);
+    P = L.back(); 
+    L.pop_back();
+
+  }
  
  
  
   // --test block--
   // circle(cost_map, P.pixel, 10, 0);
-  cout<< cost_map;
+  // cout<< cost_map;
   namedWindow("Cost",1);
   imshow("Cost", cost_map);
   waitKey(0);
