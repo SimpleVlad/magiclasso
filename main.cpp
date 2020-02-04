@@ -11,7 +11,6 @@ using namespace std;
 
 /*void CallBackFunc(int event, int x, int y, int flags, void* userdata)
 {
-
       if ((event == EVENT_MOUSEMOVE) && (flags & EVENT_FLAG_LBUTTON)){
         if ((startX == NULL)&&(startY == NULL)){
            startX=x;
@@ -29,7 +28,7 @@ using namespace std;
 struct veght_pixel
 {
   Point pixel;
-  double tmp;
+  double cost;
 };
 
 /*class Node
@@ -39,7 +38,7 @@ struct veght_pixel
     veght_pixel back;        // to
 }*/
 
-void np(const Point &seed, vector <Point> &arr , int max_x, int max_y)
+void neighbors(const Point &seed, vector <Point> &arr , int max_x, int max_y)
 {
    cout<< "Output points:"<<endl;
    for (int i = -1; i <= 1; i++)
@@ -105,14 +104,15 @@ float local_cost(const Point &p, const Point &q, const Mat &laplasian,
         dp = dy.at<float>(p) * (p.x - q.x) - dx.at<float>(p) * (p.y - q.y);
         dq = dy.at<float>(q) * (p.x - q.x) - dx.at<float>(q) * (p.y - q.y);
     }
-    float grad = (1 / cos(dp) + 1/cos(dq)) / M_PI;
+    float grad = (1 / cos(dp) + 1/cos(dq)) / M_PI; // cost under zero;
+    cout <<"Grad: " <<grad<<endl<<endl<<endl;
     return wlaplasian * laplasian.at<float>(q) + wdirection * grad + wmagitude
            * magnitude.at<float>(q);
 }
 
 bool comp( veght_pixel a, veght_pixel b)
 {
- return a.tmp < b.tmp;
+ return a.cost < b.cost;
 }
 
 int main(int argc, char** argv)
@@ -132,7 +132,7 @@ int main(int argc, char** argv)
     gradient_magnitude(bin, dx, dy, magnitude);
 
     P.pixel = start_point;
-    P.tmp = 0;
+    P.cost = 0;
     // processed.push_back(P.pixel); 
     L.push_back(P);
 
@@ -144,7 +144,7 @@ int main(int argc, char** argv)
        cout << "F" << endl;
        L.pop_back();
        processed.push_back(P.pixel);
-       np( P.pixel, arr, laplasian.rows, laplasian.cols);
+       neighbors( P.pixel, arr, laplasian.rows, laplasian.cols);
          cout<<arr<<endl;
        while  (!arr.empty())
          {
@@ -152,13 +152,12 @@ int main(int argc, char** argv)
            st = arr.back();
            arr.pop_back();
            auto neighbor = find(processed.begin(), processed.end(), st);
-           cout << "Total_weight";
-          // if (neighbor != processed.end())
-         //   {
-              double total_weight = P.tmp + local_cost(P.pixel,st, laplasian, magnitude, dx, dy);  // rework
-              cout << total_weight<<endl;
-            // if()
-         //  }
+           if (neighbor == processed.end())
+            {
+              double total_weight = P.cost + local_cost(P.pixel,st, laplasian, magnitude, dx, dy);  // rework
+              cout << "Total_weight " << total_weight <<endl;
+     
+            }
            
          }
     }
