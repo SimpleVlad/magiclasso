@@ -144,10 +144,27 @@ int main(int argc, char** argv)
   cost_map.at<float>(start_point) = P.cost; 
   while (!L.empty())
   {
+    vector<Point> neighbor;
     sort(L.begin(), L.end(), comp);
     P = L.back(); 
-    L.pop_back();
+    expanded_map.at<float>(P.pixel) = 255;
+    neighbors(P.pixel, neighbor, expanded_map.rows, expanded_map.cols);
+    while(!neighbor.empty())
+    {
+      if(expanded_map.at<float>(P.pixel) != 255)
+      {
+        float tmp_cost = cost_map.at<float>(P.pixel) + local_cost(local_cost(
+                         P.pixel,st, laplasian, magnitude, dx, dy);
+        if ()
+        {        
+          L.pop_back();   
+        }     
+      }
+      else
+      {
 
+      }
+    }
   }
  
  
