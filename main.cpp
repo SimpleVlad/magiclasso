@@ -21,7 +21,7 @@ using namespace std;
 //         line(mask,Point(x,y),Point(startX,startY),Scalar(255,255,255),1);
 //         imshow("DST", dst);
 //         imshow("Mask", mask);
-//         startX=x;курс 
+//         startX=x;
 //         startY=y;
 //       }
 // }*/
@@ -53,7 +53,7 @@ void neighbors(const Point &seed, vector <Point> &arr , int max_x, int max_y)
              else
              {
               if ((seed.x + i >= 0) && (seed.y + j >= 0) && (seed.x + i < max_x)
-                 && (seed.y + j < max_y)) 
+                 && (seed.y + j < max_y))
                { 
                    arr.push_back(Point(seed.x + i, seed . y + j));
                    cout << seed.x + i<< " "<<seed.y + j  <<endl;
@@ -78,7 +78,6 @@ void gradient_magnitude(const Mat &src, Mat &dx, Mat &dy, Mat &mag)
   double maxVal;
   double minVal;
   Point pointMax, pointMin;
-
   Sobel(src, dx, CV_32F, 1, 0);
   Sobel(src, dy, CV_32F, 0, 1);
   magnitude (dx, dy, mag);
@@ -97,13 +96,13 @@ float local_cost(const Point &p, const Point &q, const Mat &laplasian,
 
     if (dy.at<float>(p) * (q.x - p.x) - dx.at<float>(p) * (q.y - p.y) >= 0)
     {
-        dp = dy.at<float>(p) * (q.x - p.x) - dx.at<float>(p) * (q.y - p.y);
-        dq = dy.at<float>(q) * (q.x - p.x) - dx.at<float>(q) * (q.y - p.y);
+      dp = dy.at<float>(p) * (q.x - p.x) - dx.at<float>(p) * (q.y - p.y);
+      dq = dy.at<float>(q) * (q.x - p.x) - dx.at<float>(q) * (q.y - p.y);
     }
     else
     {
-        dp = dy.at<float>(p) * (p.x - q.x) - dx.at<float>(p) * (p.y - q.y);
-        dq = dy.at<float>(q) * (p.x - q.x) - dx.at<float>(q) * (p.y - q.y);
+      dp = dy.at<float>(p) * (p.x - q.x) - dx.at<float>(p) * (p.y - q.y);
+      dq = dy.at<float>(q) * (p.x - q.x) - dx.at<float>(q) * (p.y - q.y);
     }
     float grad = (1 / cos(dp) + 1/cos(dq)) / M_PI; // cost under zero;
     cout <<"Grad: " <<grad<<endl<<endl<<endl;
@@ -135,7 +134,7 @@ int main(int argc, char** argv)
   Mat dy;
   Mat magnitude;
   gradient_magnitude(bin, dx, dy, magnitude);
-  
+
   // --start algorithm--
   P.pixel = start_point;
   P.cost = 0;
@@ -146,29 +145,27 @@ int main(int argc, char** argv)
   {
     vector<Point> neighbor;
     sort(L.begin(), L.end(), comp);
-    P = L.back(); 
+    P = L.back();
     expanded_map.at<float>(P.pixel) = 255;
     neighbors(P.pixel, neighbor, expanded_map.rows, expanded_map.cols);
     while(!neighbor.empty())
     {
+      Point st = neighbor.back();// rework
       if(expanded_map.at<float>(P.pixel) != 255)
       {
-        float tmp_cost = cost_map.at<float>(P.pixel) + local_cost(local_cost(
-                         P.pixel,st, laplasian, magnitude, dx, dy);
-        if ()
-        {        
-          L.pop_back();   
-        }     
+        float tmp_cost = cost_map.at<float>(P.pixel) + local_cost(
+                         P.pixel, st, laplasian, magnitude, dx, dy);
+        auto neighbor = find(L.begin(), L.end(), st);
+        if ((neighbor != L.pixel.end())&&(tmp_cost < cost_map.at<float>(st)))
+        {
+          L.erase(L.begin() + neighbor);
+        }
       }
-      else
-      {
-
-      }
+      neighbor.pop_back();
     }
+    neighbor = L.pixel;
   }
- 
- 
- 
+
   // --test block--
   // circle(cost_map, P.pixel, 10, 0);
   // cout<< cost_map;
@@ -177,19 +174,6 @@ int main(int argc, char** argv)
   waitKey(0);
   return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
