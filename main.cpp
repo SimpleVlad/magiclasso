@@ -1,222 +1,241 @@
-// #include <opencv2/opencv.hpp>
-// #include <opencv2/imgproc.hpp>
-// #include <iostream>
-// #include <math.h>
-// #include <list>
-// #include <vector>
-// #include <algorithm>
+#include <opencv2/opencv.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <iostream>
+#include <cmath>
+#include <string>
+#include <vector>
+#include <queue>
 
-// using namespace cv;
-// using namespace std;
+using namespace cv;
+using namespace std;
 
+bool g_flag;
+Mat img_draw;
+Point start;
 
-// // /*void CallBackFunc(int event, int x, int y, int flags, void* userdata)
-// // {
-// //       if ((event == EVENT_MOUSEMOVE) && (flags & EVENT_FLAG_LBUTTON)){
-// //         if ((startX == NULL)&&(startY == NULL)){
-// //            startX=x;
-// //            startY=y;
-// //         }
-// //         line(dst,Point(x,y),Point(startX,startY),Scalar(255,255,255),1);
-// //         line(mask,Point(x,y),Point(startX,startY),Scalar(255,255,255),1);
-// //         imshow("DST", dst);
-// //         imshow("Mask", mask);
-// //         startX=x;
-// //         startY=y;
-// //       }
-// // }*/
+struct Pix
+{
+    double value;
+    Point next_point;
 
-// struct veght_pixel
-// {
-//   Point pixel;
-//   double cost;
-// };
+    Pix(){}
 
-// // /*class Node
-// // {
-// //   public:
-// //     vector<veght_pixel> val; // in progress
-// //     veght_pixel back;        // to
-// // }*/
+    bool operator > (const Pix &b) const
+    {
+        return value > b.value;
+    }
 
-// void neighbors(const Point &seed, vector <Point> &arr , int max_x, int max_y)
-// {
-//    cout<< "Output points:"<<endl;
-//    for (int i = -1; i <= 1; i++)
-//        {
-//          for(int j = -1; j <= 1; j++)
-//           {
-//              if ((i==0)&&(j==0))
-//              {
-//                continue;
-//              }
-//              else
-//              {
-//               if ((seed.x + i >= 0) && (seed.y + j >= 0) && (seed.x + i < max_x)
-//                  && (seed.y + j < max_y))
-//                { 
-//                    arr.push_back(Point(seed.x + i, seed . y + j));
-//                    cout << seed.x + i<< " "<<seed.y + j  <<endl;
-//                }
-//              }
-//           }
-//        }
-// }
+    bool operator < (const Pix &b) const
+    {
+        return value < b.value;
+    }
+};
+Mat img, zero_crossing, gradient_magnitude, pre, cost, expand, Ix, Iy;
+
+void lap_zer_cross(Mat canny)
+{
+  for (int i = 0; i < img.rows; i++)
+    {
+        for (int j = 0; j < img.cols; j++){
+            if (canny.at<uchar>(i, j) == 255) 
+                zero_crossing.at<uchar>(i, j) = 0;
+            else 
+                zero_crossing.at<uchar>(i, j) = 1;
+        }
+    }
+}
+
+void val_Ix(Mat value)
+{
+  for (int i = 0; i < img.rows; i++){
+        for (int j = 0; j < img.cols - 1; j++){
+            Ix.at<double>(i, j) = (value.at<uchar>(i, j + 1) - value.at<uchar>(i, j)) / 255.0;
+        }
+        Ix.at<double>(i, img.cols - 1) = Ix.at<double>(i, img.cols - 2);
+    }
+}
 
 
+void val_Iy(Mat value)
+{
+  for (int j = 0; j < img.cols; j++){
+        for (int i = 0; i < img.rows - 1; i++){
+            Iy.at<double>(i, j) = (value.at<uchar>(i + 1, j) - value.at<uchar>(i, j)) / 255.0;
+        }
+        Iy.at<double>(img.rows - 1, j) = Iy.at<double>(img.rows - 2, j);
+    }
+}
 
-// Mat laplassian_zero_crossing(const Mat &src)
-// {
-//   Mat lap;
-//   Laplacian( src, lap, CV_32F);
-//   threshold(lap, lap, 0, 1, THRESH_BINARY);
-//   return lap;
-// }
+void grad_mag()
+{
+    Mat G;
+    G.create(img.rows, img.cols, CV_64FC1);
+    double max_val = 0.0;
+      for (int i = 0; i < Ix.rows; i++)
+      {
+        for (int j = 0; j < Ix.cols; j++)
+        {
+            G.at<double>(i, j) = sqrt(Ix.at<double>(i, j) * Ix.at<double>(i, j) + Iy.at<double>(i, j) * Iy.at<double>(i, j));
+            max_val = max(max_val, G.at<double>(i, j));
+        }
+      }
+    for (int i = 0; i < gradient_magnitude.rows; i++)
+    {
+        for (int j = 0; j < gradient_magnitude.cols; j++)
+        {
+            gradient_magnitude.at<double>(i, j) = 1.0 - G.at<double>(i, j) / max_val;
+        }
+    }
+}
 
-// void gradient_magnitude(const Mat &src, Mat &dx, Mat &dy, Mat &mag)
-// {
-//   double maxVal;
-//   double minVal;
-//   Point pointMax, pointMin;
-//   Sobel(src, dx, CV_32F, 1, 0);
-//   Sobel(src, dy, CV_32F, 0, 1);
-//   magnitude (dx, dy, mag);
-//   minMaxLoc(mag, &minVal, &maxVal);
-//   mag = 1 - mag / maxVal;
-// }
+double local_cost(Point p, Point q, bool diag)
+{
+    double  fG = 0.0;
+    fG = gradient_magnitude.at<double>(q.y, q.x);
+    double dp;
+    double dq;
+  
+    if ((Iy.at<double>(p.y, p.x) * (q.x - p.x) + (-Ix.at<double>(p.y, p.x)) * (q.y - p.y)) >= 0){
+        dp = Iy.at<double>(p.y, p.x) * (q.x - p.x) + (-Ix.at<double>(p.y, p.x)) * (q.y - p.y);
+        dq = (q.x - p.x) * Iy.at<double>(q.y, q.x) + (q.y - p.y) * (-Ix.at<double>(q.y, q.x));
+    }
 
-// float local_cost(const Point &p, const Point &q, const Mat &laplasian, 
-//                 const Mat &magnitude, const Mat &dx, const Mat &dy)
-// {
-//     static const float wlaplasian = 0.43f;
-//     static const float wdirection = 0.43f;
-//     static const float wmagitude = 0.14f;
-//     float dp;
-//     float dq;
-
-//     if (dy.at<float>(p) * (q.x - p.x) - dx.at<float>(p) * (q.y - p.y) >= 0)
-//     {
-//       dp = dy.at<float>(p) * (q.x - p.x) - dx.at<float>(p) * (q.y - p.y);
-//       dq = dy.at<float>(q) * (q.x - p.x) - dx.at<float>(q) * (q.y - p.y);
-//     }
-//     else
-//     {
-//       dp = dy.at<float>(p) * (p.x - q.x) - dx.at<float>(p) * (p.y - q.y);
-//       dq = dy.at<float>(q) * (p.x - q.x) - dx.at<float>(q) * (p.y - q.y);
-//     }
-//     float grad = (1 / cos(dp) + 1/cos(dq)) / M_PI; // cost under zero;
-//     cout <<"Grad: " <<grad<<endl<<endl<<endl;
-//     return wlaplasian * laplasian.at<float>(q) + wdirection * grad + wmagitude
-//            * magnitude.at<float>(q);
-// }
-
-// bool comp( veght_pixel a, veght_pixel b)
-// {
-//  return a.cost < b.cost;
-// }
-
-// int main(int argc, char** argv)
-// {
-//   // --generate strart value--
-//   Point start_point(31, 48);
-//   Point end_point(31, 47);
-//   Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
-//   Mat cost_map(bin.rows, bin.cols, CV_32FC1, cv::Scalar(2147483647));
-//   Mat expanded_map(bin.rows, bin.cols, CV_8UC1, cv::Scalar(0));
-
-//   vector <veght_pixel> L;
-//   vector <Point> path;
-//   veght_pixel P;
-//   vector<Point> processed;
-
-//   Mat laplasian = laplassian_zero_crossing(bin);
-//   Mat dx;
-//   Mat dy;
-//   Mat magnitude;
-//   gradient_magnitude(bin, dx, dy, magnitude);
-
-//   // --start algorithm--
-//   P.pixel = start_point;
-//   P.cost = 0;
-//   processed.push_back(P.pixel); 
-//   L.push_back(P);
-//   cost_map.at<float>(start_point) = P.cost; 
-//   while (!L.empty())
-//   {
-//     vector<Point> neighbor;
-//     sort(L.begin(), L.end(), comp);
-//     P = L.back();
-//     expanded_map.at<float>(P.pixel) = 255;
-//     neighbors(P.pixel, neighbor, expanded_map.rows, expanded_map.cols);
-//     while(!neighbor.empty())
-//     {
-//       Point st = neighbor.back();// rework
-//       if(expanded_map.at<float>(P.pixel) != 255)
-//       {
-//         float tmp_cost = cost_map.at<float>(P.pixel) + local_cost(
-//                          P.pixel, st, laplasian, magnitude, dx, dy);
-//         auto neighbor = find(L.begin(), L.end(), st);
-//         if ((neighbor != L.pixel.end())&&(tmp_cost < cost_map.at<float>(st)))
-//         {
-//           L.erase(L.begin() + neighbor);
-//         }
-//       }
-//       neighbor.pop_back();
-//     }
-//     neighbor = L.pixel;
-//   }
-
-//   // --test block--
-//   // circle(cost_map, P.pixel, 10, 0);
-//   // cout<< cost_map;
-//   namedWindow("Cost",1);
-//   imshow("Cost", cost_map);
-//   waitKey(0);
-//   return 0;
-// }
-// // int main(int argc, char** argv)
-
-// // {
-// //     Point start_point(331, 48);
-// //     Point end_point(331, 47);
-// //     vector <veght_pixel> L;
-// //     vector <Point> path;
-// //     veght_pixel P;
-// //     vector<Point> processed;
-
-// //     Mat bin = imread("/home/dizheninv/Desktop/test.png", IMREAD_GRAYSCALE);
-// //     Mat laplasian = laplassian_zero_crossing(bin);
-// //     Mat dx;
-// //     Mat dy;
-// //     Mat magnitude;
-// //     gradient_magnitude(bin, dx, dy, magnitude);
-
-// //     P.pixel = start_point;
-// //     P.cost = 0;
-// //     // processed.push_back(P.pixel); 
-// //     L.push_back(P);
-
-// //     while (!L.empty())
-// //     {
-// //        vector<Point> arr;
-// //        sort(L.begin(), L.end(), comp);
-// //        P = L.back();
-// //        cout << "F" << endl;
-// //        L.pop_back();
-// //        processed.push_back(P.pixel);
-// //        neighbors( P.pixel, arr, laplasian.rows, laplasian.cols);
-// //        cout<<arr<<endl;
-// //        while  (!arr.empty())
-// //          {
-// //            Point st;
-// //            st = arr.back();
-// //            arr.pop_back();
-// //            auto neighbor = find(processed.begin(), processed.end(), st);
-// //            if (neighbor == processed.end())
-// //             {
-// //               double total_weight = P.cost + local_cost(P.pixel,st, laplasian, magnitude, dx, dy);  // rework
-// //             //cout << "Total_weight " << total_weight <<endl;
-// //             }
+    else{
+        dp = Iy.at<double>(p.y, p.x) * (p.x - q.x) + (-Ix.at<double>(p.y, p.x)) * (p.y - q.y);
+        dq = (p.x - q.x) * Iy.at<double>(q.y, q.x) + (p.y - q.y) * (-Ix.at<double>(q.y, q.x));
+    }
+    if (!diag){
+        dp /= sqrt(2);
+        dq /= sqrt(2);
+    }
+    double pi = acos(-1.0);
+    if (diag)
+        fG /= sqrt(2); 
+    return  0.43 * zero_crossing.at<uchar>(q.y, q.x) + 0.43 * (acos(dp) + acos(dq)) / pi + 0.14 * fG;
+}
 
 
-           
+void find_min_path(Point start)
+{
+    Mat in_que;
+    Mat skip;
+    in_que.create(img.rows, img.cols, CV_8UC1);
+    skip.create(img.rows, img.cols, CV_8UC1);
+    int neighbor[2][8] = {{1, 0, -1, 0, 1, 1, -1, -1},
+                          {0, 1, 0, -1, 1, -1, 1, -1}};
+    
+    expand.setTo(0);
+    cost.setTo(INT_MAX);
+    in_que.setTo(0);
+    skip.setTo(0);
+    cost.at<double>(start.y, start.x) = 0;
+    in_que.at<uchar>(start.y, start.x) = 1;
+    priority_queue < Pix, vector<Pix>, greater<Pix> > L;
+    Pix begin;
+    begin.value=0;
+    begin.next_point = start;
+    L.push(begin);
+    while (!L.empty()){
+        Pix P = L.top();
+        L.pop();
+        Point p = P.next_point;
+        in_que.at<uchar>(p.y, p.x) = 0;
+        if (skip.at<uchar>(p.y, p.x) == 1)
+            continue;
+        expand.at<uchar>(p.y, p.x) = 1;
+        for (int i = 0; i < 8; i++){
+            int tx = p.x + neighbor[0][i];
+            int ty = p.y + neighbor[1][i];
+            if (tx < 0 || tx >= img.cols || ty < 0 || ty >= img.rows)
+                continue;
+            if (expand.at<uchar>(ty, tx) == 1)
+                continue;
+            Point q = Point(tx, ty);
+            double tmp;
+            if (i <= 3)
+            {
+                tmp = cost.at<double>(p.y, p.x) + local_cost(p, q, true);
+            }
+            else
+            {
+                tmp = cost.at<double>(p.y, p.x) + local_cost(p, q, false);
+            }
+            if (in_que.at<uchar>(q.y, q.x) == 1 && tmp < cost.at<double>(q.y, q.x))
+            {
+                skip.at<uchar>(q.y, q.x) = 1;
+                continue;
+            }
+            
+            if (in_que.at<uchar>(q.y, q.x) == 0)
+            {
+                cost.at<double>(q.y, q.x) = tmp;
+                pre.at<Vec2i>(q.y, q.x)[0] = p.x;
+                pre.at<Vec2i>(q.y, q.x)[1] = p.y;
+                in_que.at<uchar>(q.y, q.x) = 1;
+                Pix val;
+                val.value = cost.at<double>(q.y, q.x);
+                val.next_point = q;
+                L.push(val);
+            }
+        }
+    }
+}
+
+void onMouse(int event, int x, int y, int flags, void *param){
+  
+    if (event == EVENT_LBUTTONDOWN){
+        start = Point(x, y);
+        g_flag = true;
+        find_min_path(start);
+        img.copyTo(img_draw);
+        imshow("example", img_draw);
+    }
+    else if (event == EVENT_MOUSEMOVE && g_flag){
+        img.copyTo(img_draw);
+        Point cur = Point(x, y);
+        Point tmp;
+        while (cur != start){
+            tmp = Point(pre.at<Vec2i>(cur.y, cur.x)[0], pre.at<Vec2i>(cur.y, cur.x)[1]);
+            line(img_draw, cur, tmp, Scalar(255, 0, 255), 2);
+            if (tmp == start) break;
+            cur = tmp;
+        }
+        imshow("example", img_draw);
+    }
+    else if (event == EVENT_LBUTTONUP){
+        g_flag = false;
+        img.copyTo(img_draw);
+        imshow("example", img_draw);
+    }
+}
+
+int main(){
+    Mat grayscale;
+    Mat value;
+    Mat img_canny;
+    string path = "/home/dizheninv/Pictures/1512.jpg";
+    namedWindow("example");
+    img = imread(path);
+    gradient_magnitude.create(img.rows, img.cols, CV_64FC1);
+    pre.create(img.rows, img.cols, CV_32SC2);
+    cost.create(img.rows, img.cols, CV_64FC1);
+    expand.create(img.rows, img.cols, CV_8UC1);
+    zero_crossing.create(img.rows, img.cols, CV_64FC1);
+    Ix.create(img.rows, img.cols, CV_64FC1);
+    Iy.create(img.rows, img.cols, CV_64FC1);    
+    cvtColor(img, grayscale, COLOR_BGR2GRAY);
+    grayscale.copyTo(value);
+    // GaussianBlur(value, value, Size(3, 3), 0, 0, BORDER_DEFAULT);
+    Canny(grayscale, img_canny, 50, 100);
+    lap_zer_cross(img_canny);
+    val_Ix(value);
+    val_Iy(value);
+    grad_mag();
+
+    cout << "completed!" << endl;
+    setMouseCallback("example", onMouse, 0);
+    imshow("example", img);
+    waitKey(0);
+}
