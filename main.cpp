@@ -12,8 +12,10 @@ using namespace cv;
 using namespace std;
 
 bool g_flag;
-Mat img_draw;
+Mat img_draw , img_pre_draw;
 Point start;
+
+Scalar colored_line(255,0,0);
 
 struct Pix
 {
@@ -32,22 +34,34 @@ struct Pix
         return value < b.value;
     }
 };
+
 Mat img, zero_crossing, gradient_magnitude, pre, cost, expand, Ix, Iy;
 
-void lap_zer_cross(Mat canny)
+Mat lap_zer_cross(Mat canny)
 {
-  for (int i = 0; i < img.rows; i++)
-    {
-        for (int j = 0; j < img.cols; j++){
-            if (canny.at<uchar>(i, j) == 255) 
-                zero_crossing.at<uchar>(i, j) = 0;
-            else 
-                zero_crossing.at<uchar>(i, j) = 1;
-        }
-    }
+  Mat lap;
+  lap.create(img.rows, img.cols, CV_64FC1);
+  threshold(canny, zero_crossing, 254, 1, THRESH_BINARY);
+  return lap;
 }
 
-void val_Ix(Mat value)
+
+// Mat lap_zer_cross(const Mat& canny)
+// {
+//     namedWindow("Lap");
+//     for (int i = 0; i < img.rows; i++)
+//     {
+//         for (int j = 0; j < img.cols; j++){
+//             if (canny.at<uchar>(i, j) == 255)
+//                 zero_crossing.at<uchar>(i, j) = 0;
+//             else
+//                 zero_crossing.at<uchar>(i, j) = 1;
+//         }
+//     }
+//       imshow("lap", zero_crossing);
+// }
+
+void val_Ix(const Mat& value)
 {
   for (int i = 0; i < img.rows; i++){
         for (int j = 0; j < img.cols - 1; j++){
@@ -58,7 +72,7 @@ void val_Ix(Mat value)
 }
 
 
-void val_Iy(Mat value)
+void val_Iy(const Mat& value)
 {
   for (int j = 0; j < img.cols; j++){
         for (int i = 0; i < img.rows - 1; i++){
@@ -96,7 +110,7 @@ double local_cost(Point p, Point q, bool diag)
     fG = gradient_magnitude.at<double>(q.y, q.x);
     double dp;
     double dq;
-  
+
     if ((Iy.at<double>(p.y, p.x) * (q.x - p.x) + (-Ix.at<double>(p.y, p.x)) * (q.y - p.y)) >= 0){
         dp = Iy.at<double>(p.y, p.x) * (q.x - p.x) + (-Ix.at<double>(p.y, p.x)) * (q.y - p.y);
         dq = (q.x - p.x) * Iy.at<double>(q.y, q.x) + (q.y - p.y) * (-Ix.at<double>(q.y, q.x));
@@ -112,7 +126,7 @@ double local_cost(Point p, Point q, bool diag)
     }
     double pi = acos(-1.0);
     if (diag)
-        fG /= sqrt(2); 
+        fG /= sqrt(2);
     return  0.43 * zero_crossing.at<uchar>(q.y, q.x) + 0.43 * (acos(dp) + acos(dq)) / pi + 0.14 * fG;
 }
 
@@ -125,7 +139,7 @@ void find_min_path(Point start)
     skip.create(img.rows, img.cols, CV_8UC1);
     int neighbor[2][8] = {{1, 0, -1, 0, 1, 1, -1, -1},
                           {0, 1, 0, -1, 1, -1, 1, -1}};
-    
+
     expand.setTo(0);
     cost.setTo(INT_MAX);
     in_que.setTo(0);
@@ -183,32 +197,38 @@ void find_min_path(Point start)
     }
 }
 
-void onMouse(int event, int x, int y, int flags, void *param){
-  
-    if (event == EVENT_LBUTTONDOWN){
+void onMouse(int event, int x, int y, int flags, void *param)
+{
+    if (event == EVENT_LBUTTONDOWN)
+    {
         start = Point(x, y);
         g_flag = true;
         find_min_path(start);
-        img.copyTo(img_draw);
+        img_draw.copyTo(img_pre_draw);
         imshow("example", img_draw);
     }
-    else if (event == EVENT_MOUSEMOVE && g_flag){
-        img.copyTo(img_draw);
-        Point cur = Point(x, y);
-        Point tmp;
-        while (cur != start){
-            tmp = Point(pre.at<Vec2i>(cur.y, cur.x)[0], pre.at<Vec2i>(cur.y, cur.x)[1]);
-            line(img_draw, cur, tmp, Scalar(255, 0, 255), 2);
-            if (tmp == start) break;
-            cur = tmp;
-        }
-        imshow("example", img_draw);
-    }
-    else if (event == EVENT_LBUTTONUP){
+    else
+       if (event == EVENT_MOUSEMOVE && g_flag)
+       {
+          img_pre_draw.copyTo(img_draw);
+          Point cur = Point(x, y);
+          Point tmp;
+          while (cur != start)
+          {
+              tmp = Point(pre.at<Vec2i>(cur.y, cur.x)[0], pre.at<Vec2i>(cur.y, cur.x)[1]);
+              line(img_draw, cur, tmp, colored_line, 2);
+              if (tmp == start) break;
+              cur = tmp;
+          }
+          imshow("example", img_draw);
+       }
+    else 
+       if (event == EVENT_RBUTTONDOWN)
+       {
         g_flag = false;
-        img.copyTo(img_draw);
-        imshow("example", img_draw);
-    }
+        img_pre_draw.copyTo(img_draw);
+        imshow("example", img_pre_draw);
+       }
 }
 
 int main(){
@@ -217,6 +237,7 @@ int main(){
     Mat img_canny;
     string path = "/home/dizheninv/Pictures/1512.jpg";
     namedWindow("example");
+    
     img = imread(path);
     gradient_magnitude.create(img.rows, img.cols, CV_64FC1);
     pre.create(img.rows, img.cols, CV_32SC2);
@@ -224,9 +245,11 @@ int main(){
     expand.create(img.rows, img.cols, CV_8UC1);
     zero_crossing.create(img.rows, img.cols, CV_64FC1);
     Ix.create(img.rows, img.cols, CV_64FC1);
-    Iy.create(img.rows, img.cols, CV_64FC1);    
+    Iy.create(img.rows, img.cols, CV_64FC1);
     cvtColor(img, grayscale, COLOR_BGR2GRAY);
     grayscale.copyTo(value);
+    img.copyTo(img_draw);
+    img.copyTo(img_pre_draw);
     // GaussianBlur(value, value, Size(3, 3), 0, 0, BORDER_DEFAULT);
     Canny(grayscale, img_canny, 50, 100);
     lap_zer_cross(img_canny);
@@ -235,6 +258,7 @@ int main(){
     grad_mag();
 
     cout << "completed!" << endl;
+    imshow("lap", zero_crossing);
     setMouseCallback("example", onMouse, 0);
     imshow("example", img);
     waitKey(0);
