@@ -17,6 +17,8 @@ Point start;
 
 Scalar colored_line(255,0,0);
 
+Mat img, zero_crossing, gradient_magnitude, pre, cost, expand, Ix, Iy;
+
 struct Pix
 {
     double value;
@@ -35,31 +37,14 @@ struct Pix
     }
 };
 
-Mat img, zero_crossing, gradient_magnitude, pre, cost, expand, Ix, Iy;
 
-Mat lap_zer_cross(Mat canny)
+Mat lap_zer_cross(const Mat& canny)
 {
   Mat lap;
   lap.create(img.rows, img.cols, CV_64FC1);
-  threshold(canny, zero_crossing, 254, 1, THRESH_BINARY);
+  threshold(canny, lap, 254, 1, THRESH_BINARY_INV);
   return lap;
 }
-
-
-// Mat lap_zer_cross(const Mat& canny)
-// {
-//     namedWindow("Lap");
-//     for (int i = 0; i < img.rows; i++)
-//     {
-//         for (int j = 0; j < img.cols; j++){
-//             if (canny.at<uchar>(i, j) == 255)
-//                 zero_crossing.at<uchar>(i, j) = 0;
-//             else
-//                 zero_crossing.at<uchar>(i, j) = 1;
-//         }
-//     }
-//       imshow("lap", zero_crossing);
-// }
 
 void val_Ix(const Mat& value)
 {
@@ -85,26 +70,16 @@ void val_Iy(const Mat& value)
 void grad_mag()
 {
     Mat G;
-    G.create(img.rows, img.cols, CV_64FC1);
     double max_val = 0.0;
-      for (int i = 0; i < Ix.rows; i++)
-      {
-        for (int j = 0; j < Ix.cols; j++)
-        {
-            G.at<double>(i, j) = sqrt(Ix.at<double>(i, j) * Ix.at<double>(i, j) + Iy.at<double>(i, j) * Iy.at<double>(i, j));
-            max_val = max(max_val, G.at<double>(i, j));
-        }
-      }
-    for (int i = 0; i < gradient_magnitude.rows; i++)
-    {
-        for (int j = 0; j < gradient_magnitude.cols; j++)
-        {
-            gradient_magnitude.at<double>(i, j) = 1.0 - G.at<double>(i, j) / max_val;
-        }
-    }
+    double min_val = 0.0;
+    G.create(img.rows, img.cols, CV_64FC1);
+
+    magnitude(Iy, Ix, G);
+    minMaxLoc(G, &min_val, &max_val);
+    gradient_magnitude = 1.0 - G/max_val;
 }
 
-double local_cost(Point p, Point q, bool diag)
+double local_cost(const Point& p, const Point& q, bool diag)
 {
     double  fG = 0.0;
     fG = gradient_magnitude.at<double>(q.y, q.x);
@@ -131,7 +106,7 @@ double local_cost(Point p, Point q, bool diag)
 }
 
 
-void find_min_path(Point start)
+void find_min_path(const Point& start)
 {
     Mat in_que;
     Mat skip;
@@ -252,13 +227,13 @@ int main(){
     img.copyTo(img_pre_draw);
     // GaussianBlur(value, value, Size(3, 3), 0, 0, BORDER_DEFAULT);
     Canny(grayscale, img_canny, 50, 100);
-    lap_zer_cross(img_canny);
+    zero_crossing = lap_zer_cross(img_canny);
     val_Ix(value);
     val_Iy(value);
     grad_mag();
 
     cout << "completed!" << endl;
-    imshow("lap", zero_crossing);
+   
     setMouseCallback("example", onMouse, 0);
     imshow("example", img);
     waitKey(0);
