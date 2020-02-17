@@ -9,7 +9,7 @@
 #include <queue>
 
 using namespace cv;
-using namespace std;
+// using namespace std;
 
 bool g_flag;
 Mat img_draw , img_pre_draw;
@@ -30,21 +30,7 @@ struct Pix
     {
         return value > b.value;
     }
-
-    bool operator < (const Pix &b) const
-    {
-        return value < b.value;
-    }
 };
-
-
-Mat lap_zer_cross(const Mat& canny)
-{
-  Mat lap;
-  lap.create(img.rows, img.cols, CV_64FC1);
-  threshold(canny, lap, 254, 1, THRESH_BINARY_INV);
-  return lap;
-}
 
 void val_Ix(const Mat& value)
 {
@@ -67,16 +53,15 @@ void val_Iy(const Mat& value)
     }
 }
 
-void grad_mag()
+Mat grad_mag()
 {
     Mat G;
     double max_val = 0.0;
-    double min_val = 0.0;
     G.create(img.rows, img.cols, CV_64FC1);
-
     magnitude(Iy, Ix, G);
-    minMaxLoc(G, &min_val, &max_val);
-    gradient_magnitude = 1.0 - G/max_val;
+    minMaxLoc(G, 0, &max_val);
+    G = 1.0 - G/max_val;
+    return G;
 }
 
 double local_cost(const Point& p, const Point& q, bool diag)
@@ -121,7 +106,7 @@ void find_min_path(const Point& start)
     skip.setTo(0);
     cost.at<double>(start.y, start.x) = 0;
     in_que.at<uchar>(start.y, start.x) = 1;
-    priority_queue < Pix, vector<Pix>, greater<Pix> > L;
+    std :: priority_queue < Pix, std :: vector<Pix>, std:: greater<Pix> > L;
     Pix begin;
     begin.value=0;
     begin.next_point = start;
@@ -156,7 +141,7 @@ void find_min_path(const Point& start)
                 skip.at<uchar>(q.y, q.x) = 1;
                 continue;
             }
-            
+
             if (in_que.at<uchar>(q.y, q.x) == 0)
             {
                 cost.at<double>(q.y, q.x) = tmp;
@@ -210,31 +195,32 @@ int main(){
     Mat grayscale;
     Mat value;
     Mat img_canny;
-    string path = "/home/dizheninv/Pictures/1512.jpg";
+    std :: cout << "Enter path: ";
+    std :: string path;
+    std :: cin >> path;
     namedWindow("example");
-    
+
     img = imread(path);
-    gradient_magnitude.create(img.rows, img.cols, CV_64FC1);
     pre.create(img.rows, img.cols, CV_32SC2);
     cost.create(img.rows, img.cols, CV_64FC1);
     expand.create(img.rows, img.cols, CV_8UC1);
-    zero_crossing.create(img.rows, img.cols, CV_64FC1);
     Ix.create(img.rows, img.cols, CV_64FC1);
     Iy.create(img.rows, img.cols, CV_64FC1);
     cvtColor(img, grayscale, COLOR_BGR2GRAY);
     grayscale.copyTo(value);
     img.copyTo(img_draw);
     img.copyTo(img_pre_draw);
-    // GaussianBlur(value, value, Size(3, 3), 0, 0, BORDER_DEFAULT);
+   
     Canny(grayscale, img_canny, 50, 100);
-    zero_crossing = lap_zer_cross(img_canny);
+    threshold(img_canny, zero_crossing, 254, 1, THRESH_BINARY_INV);
     val_Ix(value);
     val_Iy(value);
-    grad_mag();
+    gradient_magnitude = grad_mag();
 
-    cout << "completed!" << endl;
-   
+    std :: cout << "completed!" << std :: endl;
+
     setMouseCallback("example", onMouse, 0);
+
     imshow("example", img);
     waitKey(0);
 }
