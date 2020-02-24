@@ -141,7 +141,7 @@ void onMouse(int event, int x, int y, int flags, void *param)
         g_flag = true;
         find_min_path(start);
         img.copyTo(img_pre_draw);
-        imshow("example", img);
+        imshow("lasso", img);
     }
     else
        if (event == EVENT_MOUSEMOVE && g_flag)
@@ -155,14 +155,14 @@ void onMouse(int event, int x, int y, int flags, void *param)
               line(img, cur, tmp, colored_line, 2);
               cur = tmp;
           }
-          imshow("example", img);
+          imshow("lasso", img);
        }
     else 
        if (event == EVENT_RBUTTONDOWN)
        {
         g_flag = false;
         img_pre_draw.copyTo(img);
-        imshow("example", img_pre_draw);
+        imshow("lasso", img_pre_draw);
        }
 }
 
