@@ -10,9 +10,9 @@
 
 using namespace cv;
 
-bool g_flag;
+bool cont;
 Mat img, img_pre_draw;
-Point start;
+Point end;
 
 Scalar colored_line(255,0,0);
 
@@ -55,7 +55,6 @@ double local_cost(const Point& p, const Point& q, bool diag)
         dp = Iy.at<double>(p) * (p.x - q.x) + (-Ix.at<double>(p)) * (p.y - q.y);
         dq = Iy.at<double>(q) * (p.x - q.x) + (-Ix.at<double>(q)) * (p.y - q.y);
     }
-    double pi = acos(-1.0);
     if (!diag)
     {
         dp /= sqrt(2);
@@ -66,30 +65,27 @@ double local_cost(const Point& p, const Point& q, bool diag)
         fG /= sqrt(2);
     }
     return  0.43 * zero_crossing.at<uchar>(q) + 0.43 * (acos(dp)
-            + acos(dq)) / pi + 0.14 * fG;
+            + acos(dq)) / M_PI + 0.14 * fG;
 }
 
 
 
 void find_min_path(const Point& start)
 {
-    Mat in_que;
-    Mat skip;
+    Mat processed;
+    Mat removed;
     Mat expand;
-    Mat cost;
+    Mat cost_map;
     Pix begin;
-    int neighbor[2][8] = {{1, 0, -1, 0, 1, 1, -1, -1},
-                          {0, 1, 0, -1, 1, -1, 1, -1}};
-    cost.create(img.rows, img.cols, CV_64FC1);
+    cost_map.create(img.rows, img.cols, CV_64FC1);
     expand.create(img.rows, img.cols, CV_8UC1);
-    in_que.create(img.rows, img.cols, CV_8UC1);
-    skip.create(img.rows, img.cols, CV_8UC1);
+    processed.create(img.rows, img.cols, CV_8UC1);
+    removed.create(img.rows, img.cols, CV_8UC1);
     expand.setTo(0);
-    in_que.setTo(0);
-    skip.setTo(0);
-    cost.setTo(INT_MAX);
-    cost.at<double>(start) = 0;
-    in_que.at<uchar>(start) = 1;
+    processed.setTo(0);
+    cost_map.setTo(INT_MAX);
+    cost_map.at<double>(start) = 0;
+    processed.at<uchar>(start) = 1;
     std :: priority_queue < Pix, std :: vector<Pix>, std:: greater<Pix> > L;
     begin.value=0;
     begin.next_point = start;
@@ -99,36 +95,38 @@ void find_min_path(const Point& start)
         Pix P = L.top();
         L.pop();
         Point p = P.next_point;
-        in_que.at<uchar>(p) = 0;
-        if (skip.at<uchar>(p) == 0)
+        processed.at<uchar>(p) = 0;
+        if (removed.at<uchar>(p) == 0)
         {
-        expand.at<uchar>(p) = 1;
-        for (int i = 0; i < 8; i++)
-        {
-            int tx = p.x + neighbor[0][i];
-            int ty = p.y + neighbor[1][i];
-            if (tx < 0 || tx >= img.cols || ty < 0 || ty >= img.rows || expand.at<uchar>(ty, tx) == 1)
-                continue;
-            Point q = Point(tx, ty);
-            double tmp = cost.at<double>(p) + local_cost(p, q, i <= 3);
-            if (in_que.at<uchar>(q) == 1 && tmp < cost.at<double>(q))
-            {
-                skip.at<uchar>(q) = 1;
-                continue;
-            }
-
-            if (in_que.at<uchar>(q) == 0)
-            {
-                cost.at<double>(q) = tmp;
-                hit_map_x.at<int>(q)= p.x;
-                hit_map_y.at<int>(q) = p.y;
-                in_que.at<uchar>(q) = 1;
-                Pix val;
-                val.value = cost.at<double>(q);
-                val.next_point = q;
-                L.push(val);
-            }
-        }
+           expand.at<uchar>(p) = 1;
+           for (int i = -1; i <= 1; i++)
+           {
+              for(int j = -1; j <= 1; j++)
+              {
+                 int tx = p.x + i;
+                 int ty = p.y + j;
+                 if ((tx >= 0 && tx < img.cols && ty >= 0 && ty < img.rows && expand.at<uchar>(ty, tx) == 0) && ((i!=0)||(j!=0)))
+                 { 
+                    Point q = Point(tx, ty);
+                    double tmp = cost_map.at<double>(p) + local_cost(p, q, ((p.x == q.x) || (p.y == q.y)));
+                    if (processed.at<uchar>(q) == 1 && tmp < cost_map.at<double>(q))
+                    {
+                       removed.at<uchar>(q) = 1;
+                    }
+                    if (processed.at<uchar>(q) == 0)
+                    {
+                       cost_map.at<double>(q) = tmp;
+                       hit_map_x.at<int>(q)= p.x;
+                       hit_map_y.at<int>(q) = p.y;
+                       processed.at<uchar>(q) = 1;
+                       Pix val;
+                       val.value = cost_map.at<double>(q);
+                       val.next_point = q;
+                       L.push(val);
+                    }
+                 }
+              }
+           }        
         }
     }
 }
@@ -137,33 +135,33 @@ void onMouse(int event, int x, int y, int flags, void *param)
 {
     if (event == EVENT_LBUTTONDOWN)
     {
-        start = Point(x, y);
-        g_flag = true;
-        find_min_path(start);
+        end = Point(x, y);
+        cont = true;
+        find_min_path(end);
         img.copyTo(img_pre_draw);
         imshow("lasso", img);
     }
+    else   
+     if (event == EVENT_RBUTTONDOWN)
+       {
+        cont = false;
+        img_pre_draw.copyTo(img);
+        imshow("lasso", img);
+       }
     else
-       if (event == EVENT_MOUSEMOVE && g_flag)
+       if (event == EVENT_MOUSEMOVE && cont)
        {
           img_pre_draw.copyTo(img);
-          Point cur = Point(x, y);
-          Point tmp;
-          while (cur != start)
+          Point val_point = Point(x, y);
+          while (val_point != end)
           {
-              tmp = Point(hit_map_x.at<int>(cur), hit_map_y.at<int>(cur));
-              line(img, cur, tmp, colored_line, 2);
-              cur = tmp;
+              Point  cur = Point(hit_map_x.at<int>(val_point), hit_map_y.at<int>(val_point));
+              line(img, val_point, cur, colored_line, 2);
+              val_point = cur;
           }
           imshow("lasso", img);
        }
-    else 
-       if (event == EVENT_RBUTTONDOWN)
-       {
-        g_flag = false;
-        img_pre_draw.copyTo(img);
-        imshow("lasso", img_pre_draw);
-       }
+     
 }
 
 const char* keys =
